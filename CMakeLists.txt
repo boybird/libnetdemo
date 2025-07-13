@@ -6,6 +6,14 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# 确保 Debug 模式包含调试符号
+set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0")
+
+# 打印项目信息和搜索路径
+message(NOTICE "Configuringproject: ${PROJECT_NAME}")
+message(NOTICE "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
+
 # 查找 pkg-config
 find_package(PkgConfig REQUIRED)
 find_library(LIBEV_LIBRARY

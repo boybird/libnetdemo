@@ -10,41 +10,51 @@
 #define BUFFER_SIZE 1024
 
 // 客户端连接的事件处理回调函数
-static void client_read_cb(EV_P_ struct ev_io *w, int revents) {
+static void client_read_cb(EV_P_ struct ev_io *w, int revents)
+{
   char buffer[BUFFER_SIZE];
   ssize_t nread;
 
   // 读取客户端发送的数据
   nread = recv(w->fd, buffer, sizeof(buffer) - 1, 0);
 
-  if (nread < 0) {
+  if (nread < 0)
+  {
     perror("recv");
     // 如果读取错误或连接被关闭，关闭这个客户端的 socket 并移除事件监听
     ev_io_stop(loop, w); // 停止监听这个 socket 的读事件
     close(w->fd);        // 关闭 socket
     free(w);             // 释放事件结构体
     return;
-  } else if (nread == 0) {
+  }
+  else if (nread == 0)
+  {
     // 连接被客户端关闭
     printf("Client disconnected.\n");
     ev_io_stop(loop, w);
     close(w->fd);
     free(w);
     return;
-  } else {
+  }
+  else
+  {
     // 打印接收到的数据（仅用于演示）
     buffer[nread] = '\0';
     printf("Received from client: %s\n", buffer);
 
+    const char *resp = "Hello, libev!";
     // 构建一个简单的 HTTP 响应
-    const char *response = "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: text/plain\r\n"
-                           "Content-Length: 17\r\n"
-                           "\r\n"
-                           "Hello, libev!\r\n";
+    const char *body = "HTTP/1.1 200 OK\r\n"
+                       "Content-Type: text/plain\r\n"
+                       "Content-Length: %d\r\n"
+                       "\r\n"
+                       "%s";
 
+    char buf[strlen(body) + strlen(resp)];
+    int n = sprintf(buf, body, strlen(resp), resp);
     // 发送响应给客户端
-    if (send(w->fd, response, strlen(response), 0) < 0) {
+    if (send(w->fd, buf, n, 0) < 0)
+    {
       perror("send");
     }
 
@@ -58,26 +68,32 @@ static void client_read_cb(EV_P_ struct ev_io *w, int revents) {
 }
 
 // 新的客户端连接的事件处理回调函数
-static void server_accept_cb(EV_P_ struct ev_io *w, int revents) {
+static void server_accept_cb(EV_P_ struct ev_io *w, int revents)
+{
   struct sockaddr_in client_addr;
   socklen_t client_len = sizeof(client_addr);
   int client_fd;
 
   // 接受新的客户端连接
   client_fd = accept(w->fd, (struct sockaddr *)&client_addr, &client_len);
-  if (client_fd < 0) {
+  if (client_fd < 0)
+  {
     perror("accept");
     return;
   }
-
-  printf("Accepted connection from %s:%d (fd: %d)\n",
-         inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port),
-         client_fd);
+  char client_ip_str[INET_ADDRSTRLEN]; // 为 IPv4 地址分配足够的空间
+  if (inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip_str, sizeof(client_ip_str)))
+  {
+    printf("Accepted connection from %s:%d (fd: %d)\n",
+           client_ip_str, ntohs(client_addr.sin_port),
+           client_fd);
+  }
 
   // 为新的客户端连接创建一个 ev_io 事件结构体
   // 使用 malloc 分配内存，因为我们会在事件处理中释放它
   struct ev_io *client_watcher = (struct ev_io *)malloc(sizeof(struct ev_io));
-  if (!client_watcher) {
+  if (!client_watcher)
+  {
     perror("malloc failed");
     close(client_fd);
     return;
@@ -91,14 +107,16 @@ static void server_accept_cb(EV_P_ struct ev_io *w, int revents) {
   ev_io_start(loop, client_watcher);
 }
 
-int main() {
+int main()
+{
   int server_fd;
   struct sockaddr_in server_addr;
   struct ev_loop *loop; // libev 事件循环
 
   // 1. 创建服务器 socket
   server_fd = socket(AF_INET, SOCK_STREAM, 0);
-  if (server_fd < 0) {
+  if (server_fd < 0)
+  {
     perror("socket failed");
     exit(EXIT_FAILURE);
   }
@@ -106,7 +124,8 @@ int main() {
   // 设置 socket 可重用，避免端口被占用时启动失败
   int optval = 1;
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) <
-      0) {
+      0)
+  {
     perror("setsockopt(SO_REUSEADDR) failed");
     // 这个不致命，可以继续
   }
@@ -118,14 +137,16 @@ int main() {
   server_addr.sin_port = htons(LISTEN_PORT); // 指定端口
 
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) <
-      0) {
+      0)
+  {
     perror("bind failed");
     close(server_fd);
     exit(EXIT_FAILURE);
   }
 
   // 3. 开始监听连接
-  if (listen(server_fd, 5) < 0) { // 5 是连接队列的大小
+  if (listen(server_fd, 5) < 0)
+  { // 5 是连接队列的大小
     perror("listen failed");
     close(server_fd);
     exit(EXIT_FAILURE);
@@ -139,7 +160,8 @@ int main() {
 
   // 5. 创建并注册服务器 socket 的监听事件
   struct ev_io *server_watcher = (struct ev_io *)malloc(sizeof(struct ev_io));
-  if (!server_watcher) {
+  if (!server_watcher)
+  {
     perror("malloc failed");
     close(server_fd);
     exit(EXIT_FAILURE);
